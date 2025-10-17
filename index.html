@@ -1,123 +1,784 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
-  <title>Arcade Shooter 2.0 — Mobile Optimized</title>
-  <style>
-    :root{--bg:#070c18;--accent:#4ee1a0;--danger:#ff5b5b;--muted:#94a3b8}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#08101a 0%, #07121a 60%);color:#e6eef7;font-family:Inter, system-ui, Arial;overflow:hidden}
-    canvas{width:100%;height:100%;display:block;touch-action:none}
-    #hud{position:fixed;top:10px;left:10px;font-size:15px;background:rgba(0,0,0,0.3);padding:6px 12px;border-radius:8px;backdrop-filter:blur(3px)}
-    #hud div{margin:2px 0}
-    .btn{background:var(--accent);color:#041915;padding:8px 12px;border:none;border-radius:8px;font-weight:700;cursor:pointer}
-    #pause{position:fixed;top:10px;right:10px}
-    .touch-stick{position:fixed;left:20px;bottom:20px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.05),rgba(255,255,255,0.02));display:flex;align-items:center;justify-content:center}
-    .stick-knob{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.1);backdrop-filter:blur(3px)}
-    .touch-fire{position:fixed;right:24px;bottom:24px;width:88px;height:88px;border-radius:50%;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.08), rgba(255,255,255,0.03));display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--danger);font-size:20px;box-shadow:0 0 12px rgba(0,0,0,0.5)}
-    #weaponSelect{position:fixed;bottom:120px;right:20px;display:flex;flex-direction:column;gap:8px}
-    .weaponBtn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.1);color:#fff;padding:4px 8px;border-radius:6px;font-size:14px}
-    .active{background:var(--accent);color:#000;font-weight:700}
-    #gameOver{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);color:#fff;align-items:center;justify-content:center;flex-direction:column;font-size:24px;text-align:center}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>Arcade Shooter — Las_omed11 Edition</title>
+<style>
+  :root{
+    --bg:#07101a; --panel: rgba(255,255,255,0.04);
+    --accent:#4ee1a0; --danger:#ff5b5b; --muted:#98a6b6;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#061019 0%, #07121a 70%);font-family:Inter, system-ui, Arial;color:#e6eef7;overflow:hidden}
+  canvas{display:block;touch-action:none}
+  .ui {
+    position:fixed;left:12px;top:12px;background:var(--panel);padding:10px;border-radius:10px;backdrop-filter:blur(6px);
+  }
+  .ui .row{display:flex;gap:8px;align-items:center}
+  .btn{background:var(--accent);border:0;padding:8px 10px;border-radius:8px;color:#042024;font-weight:700;cursor:pointer}
+  #pause{position:fixed;right:12px;top:12px}
+  #shopBtn{position:fixed;right:12px;top:62px}
+  #nameTag{font-weight:700;color:var(--accent)}
+  /* touch controls */
+  .touch-stick{position:fixed;left:18px;bottom:18px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.02),rgba(255,255,255,0.01));display:flex;align-items:center;justify-content:center;z-index:30}
+  .stick-knob{width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.06)}
+  .touch-fire{position:fixed;right:18px;bottom:18px;width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:var(--danger);font-size:18px;z-index:30;background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.06), rgba(255,255,255,0.02))}
+  /* start screen & overlays */
+  .overlay{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(0,0,0,0.6), rgba(0,0,0,0.6));z-index:50}
+  .card{background:rgba(6,12,20,0.9);padding:22px;border-radius:12px;min-width:300px;max-width:420px;text-align:center}
+  input[type="text"]{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);margin:10px 0;background:transparent;color:#fff}
+  .shop-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .weaponItem{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+  .small{font-size:13px;color:var(--muted)}
+  #gameInfo{position:fixed;left:12px;bottom:12px;color:var(--muted);font-size:12px}
+  @media (max-width:900px){ .ui{left:10px;top:auto;bottom:150px} .touch-stick{display:flex} .touch-fire{display:flex} }
+  @media (min-width:901px){ .touch-stick{display:none} .touch-fire{display:none} }
+</style>
 </head>
 <body>
-  <canvas id="game"></canvas>
-  <div id="hud"><div>Score: <span id="score">0</span></div><div>HP: <span id="hp">100</span></div><div>Level: <span id="level">1</span></div></div>
-  <button class="btn" id="pause">Pause</button>
-  <div class="touch-stick" id="stick"><div class="stick-knob" id="knob"></div></div>
-  <div class="touch-fire" id="fireBtn">FIRE</div>
-  <div id="weaponSelect"></div>
-  <div id="gameOver"><div>GAME OVER</div><button class="btn" id="restart">Restart</button></div>
-  <script>
-  (()=>{
-    const c=document.getElementById('game');const ctx=c.getContext('2d');
-    const resize=()=>{c.width=innerWidth;c.height=innerHeight};window.addEventListener('resize',resize);resize();
+<canvas id="canvas"></canvas>
 
-    let running=true,score=0,level=1,enemies=[],bullets=[],particles=[];
-    const player={x:c.width/2,y:c.height/2,r:14,spd:200,angle:0,hp:100,cooldown:0,weapon:'pistol'};
-    const weapons={
-      pistol:{rate:0.25,spd:500,damage:1,color:'#fff'},
-      shotgun:{rate:0.6,spd:400,damage:1,spread:0.25,shots:5,color:'#ffb86b'},
-      laser:{rate:0.1,spd:800,damage:0.6,color:'#00f0ff'}
+<!-- top left UI -->
+<div class="ui">
+  <div class="row"><div>Score:</div><div id="score">0</div></div>
+  <div class="row"><div>Coins:</div><div id="coins">0</div></div>
+  <div class="row"><div>HP:</div><div id="hp">100</div></div>
+  <div class="row"><div>Level:</div><div id="level">1</div></div>
+  <div style="height:8px"></div>
+  <div class="row small">Weapon: <span id="curWeapon">Pistol</span> &nbsp;|&nbsp; Kills: <span id="kills">0</span></div>
+</div>
+
+<button id="pause" class="btn">Pause</button>
+<button id="shopBtn" class="btn">Shop</button>
+
+<!-- mobile controls -->
+<div class="touch-stick" id="stick"><div class="stick-knob" id="knob"></div></div>
+<div class="touch-fire" id="fireBtn">FIRE</div>
+
+<div id="gameInfo" class="small">Tip: Click/tap to aim & shoot. Use Shop between levels.</div>
+
+<!-- Start overlay -->
+<div id="startOverlay" class="overlay">
+  <div class="card">
+    <h2 style="margin:6px 0 8px">Arcade Shooter</h2>
+    <div class="small" style="margin-bottom:10px">Dark futuristic cartoon shooter — mobile & desktop</div>
+    <input id="playerName" type="text" placeholder="Enter your name (e.g. Las_omed11)" />
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+      <button id="playBtn" class="btn">Play</button>
+      <button id="howBtn" class="btn" style="background:var(--muted);color:#081018">How to Play</button>
+    </div>
+    <div id="howCard" style="display:none;margin-top:12px;text-align:left" class="small">
+      <b>Controls</b>: WASD / Arrow keys to move (desktop). Mouse to aim, click to shoot. Mobile: left joystick to move, right FIRE button to shoot. <br><br>
+      <b>Objective</b>: Kill soldiers, earn coins (10 per kill), buy weapons in the shop. Clear all enemies to reach next level.
+    </div>
+  </div>
+</div>
+
+<!-- Shop overlay -->
+<div id="shopOverlay" class="overlay" style="display:none;align-items:flex-start;justify-content:center;padding-top:60px">
+  <div class="card" style="min-width:360px">
+    <h3>Shop — Spend coins to unlock stronger weapons</h3>
+    <div class="small" style="margin-bottom:8px">Each kill = 10 coins. Buy weapons once — upgrades persist.</div>
+    <div class="shop-list" id="shopList">
+      <!-- items added by JS -->
+    </div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+      <button id="closeShop" class="btn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Over / Next Level overlay -->
+<div id="overOverlay" class="overlay" style="display:none;align-items:center;justify-content:center">
+  <div class="card" id="overCard">
+    <!-- content by JS -->
+  </div>
+</div>
+
+<script>
+(() => {
+  // Canvas setup
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const DPR = Math.max(1, window.devicePixelRatio || 1);
+  function resize() {
+    canvas.width = Math.floor(window.innerWidth * DPR);
+    canvas.height = Math.floor(window.innerHeight * DPR);
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // UI elements
+  const scoreEl = document.getElementById('score');
+  const coinsEl = document.getElementById('coins');
+  const hpEl = document.getElementById('hp');
+  const levelEl = document.getElementById('level');
+  const killsEl = document.getElementById('kills');
+  const curWeaponEl = document.getElementById('curWeapon');
+  const startOverlay = document.getElementById('startOverlay');
+  const playBtn = document.getElementById('playBtn');
+  const howBtn = document.getElementById('howBtn');
+  const howCard = document.getElementById('howCard');
+  const nameInput = document.getElementById('playerName');
+  const pauseBtn = document.getElementById('pause');
+  const shopBtn = document.getElementById('shopBtn');
+  const shopOverlay = document.getElementById('shopOverlay');
+  const shopList = document.getElementById('shopList');
+  const closeShop = document.getElementById('closeShop');
+  const overOverlay = document.getElementById('overOverlay');
+  const overCard = document.getElementById('overCard');
+
+  // Mobile controls
+  const stick = document.getElementById('stick');
+  const knob = document.getElementById('knob');
+  const fireBtn = document.getElementById('fireBtn');
+
+  // Game state
+  let running = false;
+  let paused = false;
+  let score = 0;
+  let coins = 0;
+  let level = 1;
+  let kills = 0;
+  let enemies = [];
+  let bullets = [];
+  let particles = [];
+  let walls = [];
+  let availableWeapons = { pistol:true }; // bought weapons
+  let playerName = 'Player';
+  let showNameAbove = true;
+
+  // Player
+  const player = {
+    x: 150,
+    y: 150,
+    r: 16,
+    speed: 200,
+    angle: 0,
+    hp: 100,
+    cooldown: 0,
+    weapon: 'pistol',
+    animStep: 0
+  };
+
+  // Weapon definitions (balance / costs)
+  const weapons = {
+    pistol: { name:'Pistol', rate:0.2, speed:520, damage:1, color:'#fff', cost:0, desc:'Starter weapon' },
+    shotgun: { name:'Shotgun', rate:0.8, speed:420, damage:1.0, spread:0.35, shots:5, color:'#ffb86b', cost:60, desc:'Close-range heavy spread' },
+    rifle: { name:'Rifle', rate:0.12, speed:760, damage:0.9, color:'#8ad1ff', cost:120, desc:'Fast accurate rifle' },
+    rocket: { name:'Rocket', rate:1.2, speed:360, damage:8, splash:28, color:'#ff8a8a', cost:250, desc:'High damage, explosive (OP)' }
+  };
+
+  // Level definitions (2 levels)
+  const levelDefs = {
+    1: { waves: [{ count:1, behindWall:true, boss:false }], wallCount:1 },
+    2: { waves: [{ count:2, behindWall:true, boss:false }], wallCount:2 }
+  };
+
+  // Controls
+  const keys = {};
+  window.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; if (e.key === ' ') e.preventDefault(); });
+  window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+  // Mouse
+  const mouse = { x: 0, y: 0, down: false };
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - rect.left);
+    mouse.y = (e.clientY - rect.top);
+  });
+  canvas.addEventListener('mousedown', e => mouse.down = true);
+  window.addEventListener('mouseup', e => mouse.down = false);
+
+  // Touch / Mobile joystick
+  let activeStickId = null;
+  let moveX = 0, moveY = 0;
+  stick.style.left = '18px';
+  stick.style.bottom = '18px';
+  // base for knob reset
+  knob.style.transform = 'translate(-30px,-30px)';
+
+  window.addEventListener('touchstart', e => {
+    for (const t of e.changedTouches) {
+      // left half -> joystick
+      if (t.clientX < window.innerWidth / 2 && activeStickId === null) {
+        activeStickId = t.identifier;
+      } else {
+        // right side touches act as fire/aim
+        mouse.x = t.clientX; mouse.y = t.clientY; mouse.down = true;
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeStickId) {
+        // joystick movement
+        const baseX = 90;
+        const baseY = window.innerHeight - 90;
+        const dx = t.clientX - baseX;
+        const dy = t.clientY - baseY;
+        const max = 50;
+        const dist = Math.min(max, Math.hypot(dx, dy));
+        const ang = Math.atan2(dy, dx);
+        knob.style.transform = `translate(${Math.cos(ang)*dist - 30}px, ${Math.sin(ang)*dist - 30}px)`;
+        moveX = Math.cos(ang) * (dist / max);
+        moveY = Math.sin(ang) * (dist / max);
+      } else {
+        // aim touch
+        mouse.x = t.clientX; mouse.y = t.clientY;
+      }
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === activeStickId) {
+        activeStickId = null; moveX = 0; moveY = 0; knob.style.transform = 'translate(-30px,-30px)';
+      } else {
+        mouse.down = false;
+      }
+    }
+  }, { passive: true });
+
+  fireBtn.addEventListener('touchstart', e => { mouse.down = true; }, { passive: true });
+  fireBtn.addEventListener('touchend', e => { mouse.down = false; }, { passive: true });
+
+  // Shop UI creation
+  function refreshShopList(){
+    shopList.innerHTML = '';
+    Object.keys(weapons).forEach(key => {
+      if (key === 'pistol') return; // always available
+      const w = weapons[key];
+      const item = document.createElement('div');
+      item.className = 'weaponItem';
+      item.innerHTML = `<div>
+        <div style="font-weight:700">${w.name}</div>
+        <div class="small">${w.desc}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:800">${w.cost} coins</div>
+        <div style="margin-top:6px">
+          <button class="btn" data-weapon="${key}" ${availableWeapons[key] ? 'disabled' : ''}>${availableWeapons[key] ? 'Owned' : 'Buy'}</button>
+        </div>
+      </div>`;
+      shopList.appendChild(item);
+    });
+    shopList.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => {
+        const key = b.dataset.weapon;
+        const cost = weapons[key].cost;
+        if (coins >= cost) {
+          coins -= cost;
+          availableWeapons[key] = true;
+          updateUI();
+          refreshShopList();
+          alert(`${weapons[key].name} purchased!`);
+        } else {
+          alert('Not enough coins');
+        }
+      });
+    });
+  }
+  closeShop.addEventListener('click', () => { shopOverlay.style.display = 'none'; });
+
+  shopBtn.addEventListener('click', () => {
+    paused = true; shopOverlay.style.display = 'flex'; refreshShopList();
+  });
+
+  // Start / Play
+  howBtn.addEventListener('click', () => { howCard.style.display = howCard.style.display === 'none' ? 'block' : 'none'; });
+  playBtn.addEventListener('click', () => {
+    const name = nameInput.value.trim();
+    playerName = name ? name : 'Player';
+    startOverlay.style.display = 'none';
+    startGame();
+  });
+
+  // Pause
+  pauseBtn.addEventListener('click', () => {
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+  });
+
+  // Shop: allow close with escape
+  window.addEventListener('keydown', e => { if (e.key === 'Escape') { shopOverlay.style.display = 'none'; } });
+
+  // Game functions
+  function startGame(){
+    running = true;
+    paused = false;
+    score = 0; coins = 0; level = 1; kills = 0;
+    enemies = []; bullets = []; particles = []; walls = [];
+    availableWeapons = { pistol:true };
+    player.x = canvas.width / DPR / 2;
+    player.y = canvas.height / DPR / 2;
+    player.hp = 100; player.weapon = 'pistol';
+    prepareLevel(level);
+    updateUI();
+  }
+
+  // Prepare walls & enemies for current level
+  function prepareLevel(lv){
+    enemies = []; bullets = []; particles = [];
+    walls = [];
+    const def = levelDefs[lv] || levelDefs[2];
+    // create walls (rectangle obstacles)
+    const wcount = def.wallCount || 1;
+    for (let i=0;i<wcount;i++){
+      // place wall at some position
+      const w = {
+        x: 120 + i * 260,
+        y: canvas.height / DPR / 2 - 80 + (i % 2) * 40,
+        w: 160,
+        h: 40
+      };
+      walls.push(w);
+    }
+    // spawn enemies behind walls or near walls
+    def.waves.forEach(wave => {
+      for (let i=0;i<wave.count;i++){
+        // pick a wall to hide behind (if behindWall)
+        const wall = walls[i % walls.length];
+        // spawn position: behind wall (slightly offset)
+        const ex = wall.x + wall.w/2 + (Math.random()<0.5 ? -1 : 1) * (wall.w/2 + 22);
+        const ey = wall.y + Math.random() * (wall.h + 40) - 10;
+        const e = makeEnemy(ex, ey, wave.boss ? true : false);
+        enemies.push(e);
+      }
+    });
+  }
+
+  function makeEnemy(x,y,boss=false){
+    const baseSize = boss ? 36 : 20 + Math.random()*8;
+    return {
+      x, y, r: baseSize, hp: boss ? 80 + level*20 : 6 + level*3,
+      speed: boss ? 60 + level*10 : 50 + level*6,
+      color: boss ? '#ff6b6b' : '#ffd18a',
+      boss,
+      name: 'Soldier'
     };
+  }
 
-    const keys={};window.addEventListener('keydown',e=>keys[e.key.toLowerCase()]=true);window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
-
-    let mouse={x:0,y:0,down:false};c.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});c.addEventListener('mousedown',()=>mouse.down=true);window.addEventListener('mouseup',()=>mouse.down=false);
-
-    const stick=document.getElementById('stick');const knob=document.getElementById('knob');const fireBtn=document.getElementById('fireBtn');
-    let activeStick=null,moveX=0,moveY=0,autoFire=false;
-
-    stick.addEventListener('touchstart',e=>{activeStick=e.changedTouches[0].identifier});
-    window.addEventListener('touchmove',e=>{
-      for(const t of e.changedTouches){if(t.identifier===activeStick){const dx=t.clientX-90,dy=t.clientY-(innerHeight-90);const dist=Math.min(50,Math.hypot(dx,dy));const ang=Math.atan2(dy,dx);knob.style.transform=`translate(${Math.cos(ang)*dist-30}px,${Math.sin(ang)*dist-30}px)`;moveX=Math.cos(ang)*(dist/50);moveY=Math.sin(ang)*(dist/50);}}
-    },{passive:true});
-    window.addEventListener('touchend',e=>{for(const t of e.changedTouches){if(t.identifier===activeStick){activeStick=null;moveX=0;moveY=0;knob.style.transform='translate(-30px,-30px)';}}});
-    fireBtn.addEventListener('touchstart',()=>autoFire=true,{passive:true});fireBtn.addEventListener('touchend',()=>autoFire=false,{passive:true});
-
-    const weaponSelect=document.getElementById('weaponSelect');
-    Object.keys(weapons).forEach(name=>{const b=document.createElement('button');b.className='weaponBtn';b.textContent=name;b.onclick=()=>{player.weapon=name;updateWeaponButtons();};weaponSelect.appendChild(b)});
-    function updateWeaponButtons(){document.querySelectorAll('.weaponBtn').forEach(b=>{b.classList.toggle('active',b.textContent===player.weapon)});}
-    updateWeaponButtons();
-
-    function rnd(a,b){return Math.random()*(b-a)+a}
-    function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-
-    function spawnEnemy(boss=false){
-      const x=rnd(0,c.width),y=rnd(0,c.height)<50? -30:c.height+30;
-      const e={x,y,r:boss?40:rnd(12,25)+level*1.2,spd:boss?60:60+level*5,hp:boss?60+level*20:5+level, boss, color:boss?'#ff4545':'#ffb86b'};
-      enemies.push(e);
-    }
-
-    let spawnTimer=1,bossTimer=30;
-
-    function bullet(x,y,ang,owner='player'){const w=weapons[player.weapon];bullets.push({x,y,dx:Math.cos(ang)*w.spd,dy:Math.sin(ang)*w.spd,r:4,owner,ttl:3,damage:w.damage,color:w.color})}
-
-    function explode(x,y,color,n=10){for(let i=0;i<n;i++){particles.push({x,y,dx:rnd(-150,150),dy:rnd(-150,150),ttl:rnd(0.3,1),age:0,color})}}
-
-    function update(dt){
-      if(!running)return;
-      let vx=moveX,vy=moveY;if(keys['w'])vy-=1;if(keys['s'])vy+=1;if(keys['a'])vx-=1;if(keys['d'])vx+=1;const mag=Math.hypot(vx,vy)||1;player.x+=vx/mag*player.spd*dt;player.y+=vy/mag*player.spd*dt;
-      player.x=Math.max(0,Math.min(c.width,player.x));player.y=Math.max(0,Math.min(c.height,player.y));
-      player.angle=Math.atan2(mouse.y-player.y,mouse.x-player.x);
-
-      const w=weapons[player.weapon];player.cooldown-=dt;
-      if((mouse.down||autoFire)&&(player.cooldown<=0)){
-        player.cooldown=w.rate;
-        if(w.shots){for(let i=0;i<w.shots;i++){const a=player.angle+rnd(-w.spread,w.spread);bullet(player.x,player.y,a);}}
-        else bullet(player.x,player.y,player.angle);
+  // Bullets & weapon fire
+  function fireWeapon(angle){
+    const w = weapons[player.weapon];
+    if (!w) return;
+    if (player.cooldown > 0) return;
+    player.cooldown = w.rate;
+    if (w.shots && w.shots > 1) {
+      // shotgun spread
+      for (let i=0;i<w.shots;i++){
+        const spread = (Math.random() - 0.5) * w.spread;
+        const a = angle + spread;
+        bullets.push({ x: player.x, y: player.y, dx: Math.cos(a)*w.speed, dy: Math.sin(a)*w.speed, r: 4, dmg: w.damage, color: w.color, ttl: 2.5 });
       }
+    } else if (player.weapon === 'rocket') {
+      bullets.push({ x: player.x, y: player.y, dx: Math.cos(angle)*w.speed, dy: Math.sin(angle)*w.speed, r: 7, dmg: w.damage, color: w.color, ttl: 3, rocket:true });
+    } else {
+      bullets.push({ x: player.x, y: player.y, dx: Math.cos(angle)*w.speed, dy: Math.sin(angle)*w.speed, r: 3, dmg: w.damage, color: w.color, ttl: 2.5 });
+    }
+  }
 
-      spawnTimer-=dt;bossTimer-=dt;if(spawnTimer<=0){spawnTimer=1;spawnEnemy();}if(bossTimer<=0){bossTimer=40;spawnEnemy(true);}
+  // Collision helpers
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
 
-      for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.dx*dt;b.y+=b.dy*dt;b.ttl-=dt;if(b.ttl<=0){bullets.splice(i,1);continue;}
-        for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(dist(b,e)<e.r+b.r){e.hp-=b.damage;explode(b.x,b.y,b.color,4);bullets.splice(i,1);if(e.hp<=0){score+=e.boss?500:50;explode(e.x,e.y,e.color,e.boss?40:15);if(e.boss)level++;enemies.splice(j,1);}break;}}
+  // Update & render loop
+  let last = performance.now();
+  function loop(now){
+    const dt = Math.min(0.06, (now - last) / 1000);
+    last = now;
+    if (running && !paused) {
+      update(dt);
+    }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    // player movement (keyboard + mobile joystick)
+    let mvx = moveX, mvy = moveY;
+    if (keys['w'] || keys['arrowup']) mvy -= 1;
+    if (keys['s'] || keys['arrowdown']) mvy += 1;
+    if (keys['a'] || keys['arrowleft']) mvx -= 1;
+    if (keys['d'] || keys['arrowright']) mvx += 1;
+    const mag = Math.hypot(mvx, mvy) || 1;
+    player.x += (mvx / mag) * player.speed * dt;
+    player.y += (mvy / mag) * player.speed * dt;
+    // clamp to screen
+    player.x = clamp(player.x, 16, canvas.width / DPR - 16);
+    player.y = clamp(player.y, 16, canvas.height / DPR - 16);
+
+    // aim (mouse / touch)
+    player.angle = Math.atan2(mouse.y - player.y, mouse.x - player.x);
+
+    // firing
+    player.cooldown -= dt;
+    const wantFire = mouse.down || keys[' '];
+    if (wantFire) fireWeapon(player.angle);
+
+    // update bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x += b.dx * dt; b.y += b.dy * dt;
+      b.ttl -= dt;
+      if (b.x < -50 || b.x > canvas.width/DPR + 50 || b.y < -50 || b.y > canvas.height/DPR + 50 || b.ttl <= 0) {
+        bullets.splice(i,1);
+        continue;
       }
-
-      for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];const a=Math.atan2(player.y-e.y,player.x-e.x);e.x+=Math.cos(a)*e.spd*dt;e.y+=Math.sin(a)*e.spd*dt;if(dist(player,e)<e.r+player.r){player.hp-=e.boss?20:5;explode(e.x,e.y,'#ff7777',10);enemies.splice(i,1);if(player.hp<=0)gameOver();}}
-
-      for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.dx*dt;p.y+=p.dy*dt;p.dx*=0.96;p.dy*=0.96;p.age+=dt;if(p.age>p.ttl)particles.splice(i,1);}
-
-      document.getElementById('score').textContent=Math.floor(score);
-      document.getElementById('hp').textContent=Math.floor(player.hp);
-      document.getElementById('level').textContent=level;
+      // rocket explosion detection handled below on hit
+      // bullet-enemy collisions
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (dist(b.x,b.y, e.x, e.y) < e.r + b.r) {
+          // hit
+          e.hp -= b.dmg;
+          // spawn small particles
+          particles.push({ x: b.x, y: b.y, vx: (Math.random()-0.5)*120, vy:(Math.random()-0.5)*120, ttl:0.4 + Math.random()*0.8, age:0, color: b.color });
+          if (b.rocket) {
+            // rocket splash
+            for (let k = enemies.length - 1; k >= 0; k--) {
+              const e2 = enemies[k];
+              const d2 = dist(b.x,b.y, e2.x, e2.y);
+              if (d2 < 80) {
+                e2.hp -= b.dmg * 0.9; // splash reduced
+                if (e2.hp <= 0) {
+                  handleEnemyDeath(k);
+                }
+              }
+            }
+            particles.push({ x: b.x, y: b.y, vx:0, vy:0, ttl:0.9, age:0, color:'#ffb2b2', big:true });
+          }
+          // remove bullet
+          bullets.splice(i,1);
+          // remove enemy if dead
+          if (e.hp <= 0) { handleEnemyDeath(j); }
+          break;
+        }
+      }
     }
 
-    function render(){ctx.clearRect(0,0,c.width,c.height);
-      ctx.fillStyle='#0a0f1a';ctx.fillRect(0,0,c.width,c.height);
-      for(const p of particles){ctx.globalAlpha=1-(p.age/p.ttl);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,2,2);ctx.globalAlpha=1;}
-      for(const e of enemies){ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.fillStyle=e.color;ctx.fill();}
-      for(const b of bullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fillStyle=b.color;ctx.fill();}
-      ctx.save();ctx.translate(player.x,player.y);ctx.rotate(player.angle);ctx.beginPath();ctx.arc(0,0,player.r,0,Math.PI*2);ctx.fillStyle='#6bffd0';ctx.fill();ctx.fillStyle='#043';ctx.fillRect(player.r-2,-4,14,8);ctx.restore();
+    // enemies movement and behavior
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      // naive movement towards player, but avoid walls (simple)
+      const ang = Math.atan2(player.y - e.y, player.x - e.x);
+      let vx = Math.cos(ang) * e.speed * dt;
+      let vy = Math.sin(ang) * e.speed * dt;
+
+      // simple wall avoidance: if movement would cross wall, try to move around
+      for (const w of walls) {
+        // if enemy is behind wall initially, it will move around; we use simple check
+        const futureX = e.x + vx;
+        const futureY = e.y + vy;
+        if (futureX > w.x && futureX < w.x + w.w && futureY > w.y && futureY < w.y + w.h) {
+          // nudge perpendicular
+          vx += Math.cos(ang + Math.PI/2) * 20 * dt;
+          vy += Math.sin(ang + Math.PI/2) * 20 * dt;
+        }
+      }
+      e.x += vx; e.y += vy;
+
+      // enemy collides with player
+      if (dist(e.x,e.y, player.x, player.y) < e.r + player.r) {
+        // damage player; boss deals more
+        player.hp -= e.boss ? 18 : 6;
+        particles.push({ x: (e.x+player.x)/2, y: (e.y+player.y)/2, vx: (Math.random()-0.5)*200, vy:(Math.random()-0.5)*200, ttl:0.6, age:0, color:'#ff9b9b' });
+        // enemy dies upon hit + melee contact
+        enemies.splice(i,1);
+        // coins & score
+        const coinGain = 10;
+        coins += coinGain;
+        score += 50;
+        kills += 1;
+        updateUI();
+        // check level cleared
+        if (enemies.length === 0) {
+          // show level complete overlay
+          setTimeout(() => { showLevelComplete(); }, 300);
+        }
+      }
     }
 
-    let last=performance.now();function loop(now){const dt=Math.min(0.05,(now-last)/1000);last=now;update(dt);render();requestAnimationFrame(loop);}requestAnimationFrame(loop);
+    // particle update
+    for (let i = particles.length -1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += (p.vx||0) * dt; p.y += (p.vy||0) * dt;
+      p.age += dt;
+      if (p.age >= p.ttl) particles.splice(i,1);
+    }
 
-    function gameOver(){running=false;document.getElementById('gameOver').style.display='flex';}
-    document.getElementById('restart').onclick=()=>{running=true;player.hp=100;score=0;level=1;enemies=[];bullets=[];particles=[];document.getElementById('gameOver').style.display='none';};
-    document.getElementById('pause').onclick=()=>{running=!running;document.getElementById('pause').textContent=running?'Pause':'Resume';};
-  })();
-  </script>
+    // update UI
+    updateUI();
+  }
+
+  function handleEnemyDeath(index){
+    const e = enemies[index];
+    // explosion particles
+    for (let i=0;i<18;i++){
+      particles.push({ x: e.x + (Math.random()-0.5)*e.r, y: e.y + (Math.random()-0.5)*e.r, vx: (Math.random()-0.5)*260, vy: (Math.random()-0.5)*260, ttl: 0.4+Math.random()*0.8, age:0, color: e.color });
+    }
+    // reward coins & score
+    enemies.splice(index,1);
+    const coinGain = 10; // per kill
+    coins += coinGain;
+    score += e.boss ? 400 : 100;
+    kills += 1;
+    updateUI();
+
+    if (enemies.length === 0) {
+      setTimeout(()=>{ showLevelComplete(); }, 250);
+    }
+  }
+
+  function updateUI(){
+    scoreEl.textContent = Math.max(0, Math.floor(score));
+    coinsEl.textContent = Math.max(0, Math.floor(coins));
+    hpEl.textContent = Math.max(0, Math.floor(player.hp));
+    levelEl.textContent = level;
+    killsEl.textContent = kills;
+    curWeaponEl.textContent = weapons[player.weapon].name;
+  }
+
+  function showLevelComplete(){
+    paused = true;
+    overOverlay.style.display = 'flex';
+    overCard.innerHTML = `<h3>Level ${level} Cleared!</h3>
+      <div class="small" style="margin:8px 0">Score: ${Math.floor(score)} &nbsp;|&nbsp; Coins: ${Math.floor(coins)}</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+        <button class="btn" id="nextLevel">Next Level</button>
+        <button class="btn" id="toShop">Open Shop</button>
+      </div>`;
+    document.getElementById('nextLevel').addEventListener('click', () => {
+      overOverlay.style.display = 'none';
+      paused = false;
+      level = Math.min(2, level + 1);
+      player.hp = Math.min(100, player.hp + 30); // give some heal
+      prepareLevel(level);
+      updateUI();
+    });
+    document.getElementById('toShop').addEventListener('click', () => {
+      overOverlay.style.display = 'none';
+      shopOverlay.style.display = 'flex';
+      refreshShopList();
+    });
+  }
+
+  function showGameOver(){
+    paused = true;
+    running = false;
+    overOverlay.style.display = 'flex';
+    overCard.innerHTML = `<h3>GAME OVER</h3>
+      <div class="small" style="margin:8px 0">Name: <span style="font-weight:700">${playerName}</span></div>
+      <div class="small">Final Score: ${Math.floor(score)} | Kills: ${kills} | Coins: ${Math.floor(coins)}</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button class="btn" id="restartBtn">Restart</button>
+        <button class="btn" id="goShop">Shop</button>
+      </div>`;
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      overOverlay.style.display = 'none';
+      startOverlay.style.display = 'flex';
+      nameInput.value = playerName;
+    });
+    document.getElementById('goShop').addEventListener('click', () => {
+      overOverlay.style.display = 'none';
+      shopOverlay.style.display = 'flex'; refreshShopList();
+    });
+  }
+
+  // Render
+  function render(){
+    // clear
+    ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR);
+    // background
+    ctx.fillStyle = '#06131b';
+    ctx.fillRect(0,0,canvas.width/DPR,canvas.height/DPR);
+    // subtle grid / floor
+    for (let gx = 0; gx < canvas.width/DPR; gx += 120) {
+      ctx.fillStyle = 'rgba(255,255,255,0.01)';
+      ctx.fillRect(gx, 0, 1, canvas.height/DPR);
+    }
+    // draw walls
+    for (const w of walls) {
+      ctx.fillStyle = '#14202b';
+      ctx.fillRect(w.x, w.y, w.w, w.h);
+      // wall top highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.02)';
+      ctx.fillRect(w.x, w.y, w.w, 6);
+    }
+
+    // draw enemies (cartoon soldier)
+    for (const e of enemies) {
+      drawSoldier(e.x, e.y, e.r, e.color, e.boss);
+    }
+
+    // draw bullets
+    for (const b of bullets) {
+      ctx.beginPath();
+      ctx.fillStyle = b.color || '#fff';
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    // draw player (cartoon soldier, top-down)
+    drawPlayer(player.x, player.y, player.r);
+
+    // draw player name above player
+    if (showNameAbove) {
+      ctx.font = '12px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(player.x - 40, player.y - player.r - 28, 80, 18);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(playerName, player.x, player.y - player.r - 16);
+    }
+
+    // draw particles
+    for (const p of particles) {
+      ctx.globalAlpha = 1 - (p.age / p.ttl);
+      ctx.fillStyle = p.color || '#fff';
+      if (p.big) ctx.fillRect(p.x - 8, p.y - 8, 16, 16);
+      else ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Draw a simple cartoon soldier for enemies
+  function drawSoldier(x, y, r, color, boss=false){
+    ctx.save();
+    ctx.translate(x, y);
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(0, r*0.6, r*0.9, r*0.45, 0, 0, Math.PI*2);
+    ctx.fill();
+    // body
+    ctx.fillStyle = color;
+    roundRect(ctx, -r, -r, r*2, r*2, r*0.25);
+    // helmet/head on top
+    ctx.fillStyle = '#20242a';
+    ctx.beginPath();
+    ctx.ellipse(0, -r*0.35, r*0.5, r*0.45, 0, 0, Math.PI*2);
+    ctx.fill();
+    // visor
+    ctx.fillStyle = '#8fdfff';
+    ctx.beginPath();
+    ctx.ellipse(0, -r*0.35, r*0.25, r*0.12, 0, 0, Math.PI*2);
+    ctx.fill();
+    // small gun rectangle to side
+    ctx.fillStyle = '#0b1720';
+    ctx.fillRect(r*0.3, -r*0.15, r*0.9, r*0.16);
+    // boss glow
+    if (boss) {
+      ctx.strokeStyle = 'rgba(255,100,100,0.12)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0,0,r*1.05,0,Math.PI*2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Draw the player soldier with simple walking bob
+  function drawPlayer(x,y,r){
+    // walking bob
+    player.animStep += 0.06;
+    const bob = Math.sin(player.animStep) * 2;
+    ctx.save();
+    ctx.translate(x, y + bob);
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(0, r*0.6, r*1.1, r*0.5, 0, 0, Math.PI*2);
+    ctx.fill();
+    // torso
+    ctx.fillStyle = '#6bffd0';
+    roundRect(ctx, -r, -r, r*2, r*2, r*0.25);
+    // helmet
+    ctx.fillStyle = '#1e2730';
+    ctx.beginPath();
+    ctx.ellipse(0, -r*0.35, r*0.5, r*0.45, 0, 0, Math.PI*2);
+    ctx.fill();
+    // visor
+    ctx.fillStyle = '#7fe8ff';
+    ctx.beginPath();
+    ctx.ellipse(0, -r*0.35, r*0.25, r*0.12, 0, 0, Math.PI*2);
+    ctx.fill();
+    // weapon (rotated toward aim)
+    ctx.save();
+    ctx.translate(0,0);
+    ctx.rotate(player.angle);
+    ctx.fillStyle = '#052b26';
+    ctx.fillRect(r*0.6, -5, 26, 10);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // simple rounded rect
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Start the loop
+  requestAnimationFrame(loop);
+
+  // Simple controls for weapon switching (keyboard numbers)
+  window.addEventListener('keydown', e => {
+    if (!running) return;
+    if (e.key === '1') { if (availableWeapons.pistol) player.weapon = 'pistol'; }
+    if (e.key === '2') { if (availableWeapons.shotgun) player.weapon = 'shotgun'; }
+    if (e.key === '3') { if (availableWeapons.rifle) player.weapon = 'rifle'; }
+    if (e.key === '4') { if (availableWeapons.rocket) player.weapon = 'rocket'; }
+    updateUI();
+  });
+
+  // Quick weapon UI for desktop: click top-left current weapon cycles
+  curWeaponEl.parentNode.addEventListener('click', () => {
+    // cycle through owned weapons
+    const owned = Object.keys(weapons).filter(k => availableWeapons[k]);
+    const idx = owned.indexOf(player.weapon);
+    player.weapon = owned[(idx + 1) % owned.length];
+    updateUI();
+  });
+
+  // If HP drops to zero -> Game Over
+  setInterval(() => {
+    if (!running) return;
+    if (player.hp <= 0) {
+      showGameOver();
+    }
+  }, 200);
+
+  // Helpful: show welcome toast on start overlay shown
+  nameInput.addEventListener('input', () => {
+    // no action; name typed
+  });
+
+  // When page loads, prefill suggested name
+  nameInput.value = 'Las_omed11';
+
+  // Allow buying also via keyboard 'B' to open shop
+  window.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() === 'b') {
+      shopOverlay.style.display = 'flex'; refreshShopList();
+    }
+  });
+
+  // Preload: prepare first level walls
+  prepareLevel(1);
+
+})();
+</script>
 </body>
 </html>
