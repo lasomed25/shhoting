@@ -1,401 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Mini Shooter Prototype</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Neon Strike</title>
 <style>
-  html,body {margin:0;padding:0;overflow:hidden;background:#0b0f16;color:white;}
-  canvas {display:block;margin:0 auto;background:#111;}
-  #ui {position:fixed;top:10px;left:10px;font-family:sans-serif;}
-  #menu {position:fixed;inset:0;background:#000c;display:flex;flex-direction:column;align-items:center;justify-content:center;}
-  input,button{padding:8px 14px;margin-top:10px;border:none;border-radius:6px;font-size:16px;}
-  #joystick {position:fixed;bottom:60px;left:60px;width:120px;height:120px;border:2px solid #666;border-radius:50%;}
-  #stick {position:absolute;left:50%;top:50%;width:40px;height:40px;background:#00ffff88;border-radius:50%;transform:translate(-50%,-50%);}
+body,html{margin:0;padding:0;overflow:hidden;background:#000;color:#fff;font-family:sans-serif;}
+#game{position:absolute;top:0;left:0;width:100%;height:100%;background:#000;}
+#menu{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#000;}
+#joystick{position:fixed;bottom:40px;left:40px;width:120px;height:120px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;}
+#stick{width:50px;height:50px;border-radius:50%;background:#0ff;opacity:0.5;transform:translate(-50%,-50%);}
+button{padding:10px 20px;background:#0ff;border:none;border-radius:8px;cursor:pointer;}
+input{padding:8px;border-radius:6px;border:none;text-align:center;}
 </style>
 </head>
 <body>
-<div id="ui">Score: <span id="score">0</span></div>
-<div id="menu">
-  <h1>Top-Down Shooter</h1>
-  <input id="nameInput" placeholder="Enter your name"/>
-  <button onclick="startGame()">Start</button>
-</div>
-<div id="joystick"><div id="stick"></div></div>
+
 <canvas id="game"></canvas>
-<script>
-const c=document.getElementById("game"),ctx=c.getContext("2d");
-let W=innerWidth,H=innerHeight;c.width=W;c.height=H;
-let keys={},player={x:W/2,y:H/2,s:30,spd:4,color:"cyan",bullets:[],alive:true};
-let enemies=[],score=0,playing=false,name="Player";
-function startGame(){
- name=document.getElementById("nameInput").value||"Player";
- document.getElementById("menu").style.display="none";
- playing=true;loop();
-}
-window.addEventListener("keydown",e=>keys[e.key]=true);
-window.addEventListener("keyup",e=>keys[e.key]=false);
-window.addEventListener("resize",()=>{W=innerWidth;H=innerHeight;c.width=W;c.height=H;});
-function spawnEnemy(){
- enemies.push({x:Math.random()*W,y:Math.random()*H,spd:1.5,hp:1});
-}
-setInterval(()=>{if(playing&&enemies.length<5)spawnEnemy();},2000);
-c.addEventListener("click",()=>{
- player.bullets.push({x:player.x,y:player.y,dx:Math.cos(angleToMouse)*10,dy:Math.sin(angleToMouse)*10});
-});
-let mx=W/2,my=H/2,angleToMouse=0;
-c.addEventListener("mousemove",e=>{
- mx=e.clientX;my=e.clientY;
- angleToMouse=Math.atan2(my-player.y,mx-player.x);
-});
-/* mobile joystick */
-const joy=document.getElementById("joystick"),stick=document.getElementById("stick");
-let dragging=false,joyPos={x:0,y:0};
-joy.addEventListener("touchstart",e=>{dragging=true;});
-joy.addEventListener("touchmove",e=>{
- e.preventDefault();
- let t=e.touches[0];
- let rect=joy.getBoundingClientRect();
- let cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
- let dx=t.clientX-cx,dy=t.clientY-cy;
- let dist=Math.min(Math.hypot(dx,dy),50);
- let ang=Math.atan2(dy,dx);
- joyPos.x=Math.cos(ang)*dist/50;joyPos.y=Math.sin(ang)*dist/50;
- stick.style.transform=`translate(${dx/2}px,${dy/2}px)`;
-});
-joy.addEventListener("touchend",()=>{dragging=false;joyPos={x:0,y:0};stick.style.transform="translate(-50%,-50%)";});
-function loop(){
- if(!playing)return;
- ctx.clearRect(0,0,W,H);
- // movement
- let vx=(keys["a"]?-1:keys["d"]?1:0)+joyPos.x;
- let vy=(keys["w"]?-1:keys["s"]?1:0)+joyPos.y;
- player.x+=vx*player.spd;
- player.y+=vy*player.spd;
- player.x=Math.max(player.s,Math.min(W-player.s,player.x));
- player.y=Math.max(player.s,Math.min(H-player.s,player.y));
- // bullets
- for(let b of player.bullets){b.x+=b.dx;b.y+=b.dy;}
- player.bullets=player.bullets.filter(b=>b.x>0&&b.x<W&&b.y>0&&b.y<H);
- // enemies
- for(let e of enemies){
-   let a=Math.atan2(player.y-e.y,player.x-e.x);
-   e.x+=Math.cos(a)*e.spd;
-   e.y+=Math.sin(a)*e.spd;
-   // hit check
-   for(let b of player.bullets){
-     if(Math.hypot(b.x-e.x,b.y-e.y)<20){e.hp=0;b.x=-999;}
-   }
- }
- enemies=enemies.filter(e=>e.hp>0);
- // draw
- drawShadowCircle(player.x,player.y,player.s,player.color);
- for(let b of player.bullets){drawGlow(b.x,b.y,5,"#0ff");}
- for(let e of enemies){drawShadowCircle(e.x,e.y,25,"red");}
- // score
- document.getElementById("score").textContent=score;
- // collisions
- for(let e of enemies){if(Math.hypot(e.x-player.x,e.y-player.y)<30){playing=false;alert("Game Over! Score:"+score);location.reload();}}
- // add score
- let killed=5-enemies.length;
- if(killed>0){score+=killed;for(let i=0;i<killed;i++)spawnEnemy();}
- requestAnimationFrame(loop);
-}
-function drawShadowCircle(x,y,r,color){
- ctx.beginPath();
- let grd=ctx.createRadialGradient(x,y,0,x,y,r);
- grd.addColorStop(0,color);
- grd.addColorStop(1,"#000");
- ctx.fillStyle=grd;
- ctx.arc(x,y,r,0,Math.PI*2);
- ctx.fill();
-}
-function drawGlow(x,y,r,color){
- ctx.beginPath();
- ctx.fillStyle=color;
- ctx.shadowBlur=20;
- ctx.shadowColor=color;
- ctx.arc(x,y,r,0,Math.PI*2);
- ctx.fill();
- ctx.shadowBlur=0;
-}
-</script>
-</body>
-</html>
-<script>
-const c=document.getElementById("game"),ctx=c.getContext("2d");
-let W=innerWidth,H=innerHeight;c.width=W;c.height=H;
 
-let keys={},score=0,coins=0,playing=false,name="Player";
-let player, enemies=[],shopOpen=false;
-let currentChar=localStorage.getItem("char")||"Astra";
-const chars={
-  Astra:{spd:4,hp:80,color:"cyan",price:0},
-  Vortex:{spd:3.2,hp:120,color:"orange",price:300},
-  Titan:{spd:2.4,hp:200,color:"red",price:800}
-};
+<div id="menu">
+  <h1>⚡ Neon Strike</h1>
+  <input id="nameInput" placeholder="Enter your name" />
+  <button onclick="startGame()">Start Game</button>
+</div>
 
-function makePlayer(){
- const cstats=chars[currentChar];
- return {x:W/2,y:H/2,s:30,spd:cstats.spd,hp:cstats.hp,maxhp:cstats.hp,color:cstats.color,bullets:[],alive:true};
-}
-player=makePlayer();
+<div id="joystick"><div id="stick"></div></div>
 
-function startGame(){
- name=document.getElementById("nameInput").value||"Player";
- document.getElementById("menu").style.display="none";
- playing=true;loop();
-}
-
-window.addEventListener("keydown",e=>{keys[e.key]=true;if(e.key==="Escape")toggleShop();});
-window.addEventListener("keyup",e=>keys[e.key]=false);
-window.addEventListener("resize",()=>{W=innerWidth;H=innerHeight;c.width=W;c.height=H;});
-
-function spawnEnemy(){enemies.push({x:Math.random()*W,y:Math.random()*H,spd:1.5,hp:1});}
-setInterval(()=>{if(playing&&enemies.length<5)spawnEnemy();},2000);
-
-c.addEventListener("click",()=>{
- player.bullets.push({x:player.x,y:player.y,dx:Math.cos(angleToMouse)*10,dy:Math.sin(angleToMouse)*10});
-});
-let mx=W/2,my=H/2,angleToMouse=0;
-c.addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;angleToMouse=Math.atan2(my-player.y,mx-player.x);});
-
-/* --- Shop --- */
-function toggleShop(){
- shopOpen=!shopOpen;
- if(shopOpen) renderShop(); else document.getElementById("shop")?.remove();
-}
-function renderShop(){
- let div=document.createElement("div");
- div.id="shop";
- div.style=`position:fixed;top:0;left:0;width:100%;height:100%;background:#000d;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99;`;
- div.innerHTML=`<h2>🛒 Shop — Coins: ${coins}</h2>`+
- Object.keys(chars).map(k=>{
-   let ch=chars[k];
-   let owned=(k===currentChar||localStorage.getItem("own_"+k));
-   return `<div style='margin:8px;'>${k} — 💨${ch.spd} ❤️${ch.hp} — ${owned?"Owned":"Price: "+ch.price}
-   <button data-char='${k}'>${owned?"Equip":"Buy"}</button></div>`;
- }).join("")+
- `<button id='closeShop'>Close</button>`;
- document.body.appendChild(div);
- div.addEventListener("click",e=>{
-   if(e.target.dataset.char){
-     let k=e.target.dataset.char, ch=chars[k];
-     let owned=(k===currentChar||localStorage.getItem("own_"+k));
-     if(owned){currentChar=k;localStorage.setItem("char",k);player=makePlayer();}
-     else if(coins>=ch.price){coins-=ch.price;localStorage.setItem("own_"+k,true);}
-     renderShop();
-   }
-   if(e.target.id==="closeShop"){toggleShop();}
- });
-}
-
-/* --- Mobile joystick simplified --- */
-const joy=document.getElementById("joystick"),stick=document.getElementById("stick");
-let dragging=false,joyPos={x:0,y:0};
-joy.addEventListener("touchstart",()=>dragging=true);
-joy.addEventListener("touchmove",e=>{
- e.preventDefault();let t=e.touches[0];let rect=joy.getBoundingClientRect();
- let cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
- let dx=t.clientX-cx,dy=t.clientY-cy;let dist=Math.min(Math.hypot(dx,dy),50);
- let ang=Math.atan2(dy,dx);
- joyPos.x=Math.cos(ang)*dist/50;joyPos.y=Math.sin(ang)*dist/50;
- stick.style.transform=`translate(${dx/2}px,${dy/2}px)`;
-});
-joy.addEventListener("touchend",()=>{dragging=false;joyPos={x:0,y:0};stick.style.transform="translate(-50%,-50%)";});
-
-/* --- Main Loop --- */
-function loop(){
- if(!playing)return;
- ctx.clearRect(0,0,W,H);
-
- // movement
- let vx=(keys["a"]?-1:keys["d"]?1:0)+joyPos.x;
- let vy=(keys["w"]?-1:keys["s"]?1:0)+joyPos.y;
- player.x+=vx*player.spd; player.y+=vy*player.spd;
- player.x=Math.max(player.s,Math.min(W-player.s,player.x));
- player.y=Math.max(player.s,Math.min(H-player.s,player.y));
-
- // bullets
- for(let b of player.bullets){b.x+=b.dx;b.y+=b.dy;}
- player.bullets=player.bullets.filter(b=>b.x>0&&b.x<W&&b.y>0&&b.y<H);
-
- // enemies
- for(let e of enemies){
-   let a=Math.atan2(player.y-e.y,player.x-e.x);
-   e.x+=Math.cos(a)*e.spd; e.y+=Math.sin(a)*e.spd;
-   for(let b of player.bullets){
-     if(Math.hypot(b.x-e.x,b.y-e.y)<20){e.hp=0;b.x=-999;coins+=20;}
-   }
- }
- enemies=enemies.filter(e=>e.hp>0);
-
- // draw
- drawShadowCircle(player.x,player.y,player.s,player.color);
- for(let b of player.bullets){drawGlow(b.x,b.y,5,"#0ff");}
- for(let e of enemies){drawShadowCircle(e.x,e.y,25,"red");}
-
- document.getElementById("score").textContent=`Coins: ${coins}`;
- requestAnimationFrame(loop);
-}
-
-function drawShadowCircle(x,y,r,color){
- ctx.beginPath();
- let grd=ctx.createRadialGradient(x,y,0,x,y,r);
- grd.addColorStop(0,color);
- grd.addColorStop(1,"#000");
- ctx.fillStyle=grd;ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
-}
-function drawGlow(x,y,r,color){
- ctx.beginPath();
- ctx.fillStyle=color;ctx.shadowBlur=20;ctx.shadowColor=color;
- ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-}
-</script>
-<script>
-const c=document.getElementById("game"),ctx=c.getContext("2d");
-let W=innerWidth,H=innerHeight;c.width=W;c.height=H;
-let keys={},coins=parseInt(localStorage.getItem("coins")||0),
-    playing=false,name="Player",kills=parseInt(localStorage.getItem("kills")||0),
-    level=parseInt(localStorage.getItem("level")||1),specterUnlocked=localStorage.getItem("specter")==="1";
-
-const baseChars={
-  Astra:{spd:4,hp:80,color:"cyan",price:0},
-  Vortex:{spd:3.2,hp:120,color:"orange",price:300},
-  Titan:{spd:2.4,hp:200,color:"red",price:800},
-  Specter:{spd:4.5,hp:150,color:"#0ff",price:0}
-};
-let currentChar=localStorage.getItem("char")||"Astra";
-const chars={...baseChars};
-if(!specterUnlocked) delete chars.Specter;
-
-function makePlayer(){
- const ch=baseChars[currentChar];
- return {x:W/2,y:H/2,s:30,spd:ch.spd,hp:ch.hp,maxhp:ch.hp,color:ch.color,bullets:[],alive:true};
-}
-let player=makePlayer();
-let enemies=[],angleToMouse=0,mx=W/2,my=H/2;
-
-function startGame(){
- name=document.getElementById("nameInput").value||"Player";
- document.getElementById("menu").style.display="none";
- playing=true;spawnWave();loop();
-}
-window.addEventListener("keydown",e=>{keys[e.key]=true;if(e.key==="Escape")toggleShop();});
-window.addEventListener("keyup",e=>keys[e.key]=false);
-window.addEventListener("resize",()=>{W=innerWidth;H=innerHeight;c.width=W;c.height=H;});
-c.addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;angleToMouse=Math.atan2(my-player.y,mx-player.x);});
-c.addEventListener("click",()=>{player.bullets.push({x:player.x,y:player.y,dx:Math.cos(angleToMouse)*10,dy:Math.sin(angleToMouse)*10});});
-
-/* enemies */
-function spawnWave(){
- enemies=[];
- let count=Math.min(2+level,10);
- for(let i=0;i<count;i++){enemies.push({x:Math.random()*W,y:Math.random()*H,spd:1.2+level*0.1,hp:1});}
-}
-
-/* Shop */
-function toggleShop(){
- shopOpen=!shopOpen;
- if(shopOpen)renderShop();else document.getElementById("shop")?.remove();
-}
-function renderShop(){
- let div=document.createElement("div");
- div.id="shop";
- div.style=`position:fixed;inset:0;background:#000e;color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99;`;
- div.innerHTML=`<h2>🛒 Shop — Coins:${coins}</h2>`+
- Object.keys(chars).map(k=>{
-   let ch=chars[k];let owned=(k===currentChar||localStorage.getItem("own_"+k));
-   return `<div>${k} — 💨${ch.spd} ❤️${ch.hp} ${owned?"":"💰"+ch.price}
-   <button data-char='${k}'>${owned?"Equip":"Buy"}</button></div>`;
- }).join("")+
- `<button id='closeShop'>Close</button>`;
- document.body.appendChild(div);
- div.addEventListener("click",e=>{
-   if(e.target.dataset.char){
-     let k=e.target.dataset.char,ch=baseChars[k];
-     let owned=(k===currentChar||localStorage.getItem("own_"+k));
-     if(owned){currentChar=k;localStorage.setItem("char",k);player=makePlayer();}
-     else if(coins>=ch.price){coins-=ch.price;localStorage.setItem("own_"+k,true);}
-     renderShop();
-   }
-   if(e.target.id==="closeShop"){toggleShop();}
- });
-}
-
-/* Joystick */
-const joy=document.getElementById("joystick"),stick=document.getElementById("stick");
-let dragging=false,joyPos={x:0,y:0};
-joy.addEventListener("touchstart",()=>dragging=true);
-joy.addEventListener("touchmove",e=>{
- e.preventDefault();let t=e.touches[0];let rect=joy.getBoundingClientRect();
- let cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
- let dx=t.clientX-cx,dy=t.clientY-cy;let dist=Math.min(Math.hypot(dx,dy),50);
- let ang=Math.atan2(dy,dx);
- joyPos.x=Math.cos(ang)*dist/50;joyPos.y=Math.sin(ang)*dist/50;
- stick.style.transform=`translate(${dx/2}px,${dy/2}px)`;
-});
-joy.addEventListener("touchend",()=>{dragging=false;joyPos={x:0,y:0};stick.style.transform="translate(-50%,-50%)";});
-
-/* main loop */
-function loop(){
- if(!playing)return;
- ctx.clearRect(0,0,W,H);
- let vx=(keys["a"]?-1:keys["d"]?1:0)+joyPos.x,vy=(keys["w"]?-1:keys["s"]?1:0)+joyPos.y;
- player.x+=vx*player.spd;player.y+=vy*player.spd;
- player.x=Math.max(player.s,Math.min(W-player.s,player.x));
- player.y=Math.max(player.s,Math.min(H-player.s,player.y));
-
- for(let b of player.bullets){b.x+=b.dx;b.y+=b.dy;}
- player.bullets=player.bullets.filter(b=>b.x>0&&b.x<W&&b.y>0&&b.y<H);
-
- for(let e of enemies){
-   let a=Math.atan2(player.y-e.y,player.x-e.x);
-   e.x+=Math.cos(a)*e.spd;e.y+=Math.sin(a)*e.spd;
-   for(let b of player.bullets){
-     if(Math.hypot(b.x-e.x,b.y-e.y)<20){e.hp=0;b.x=-999;coins+=20;kills++;
-       if(!specterUnlocked&&kills>=10){specterUnlocked=true;localStorage.setItem("specter","1");
-         alert("⚡ Specter Unlocked! Available in shop.");}
-     }
-   }
-   if(Math.hypot(e.x-player.x,e.y-player.y)<25){player.hp-=1;if(player.hp<=0){gameOver();}}
- }
- enemies=enemies.filter(e=>e.hp>0);
-
- drawShadowCircle(player.x,player.y,player.s,player.color);
- for(let b of player.bullets){drawGlow(b.x,b.y,5,"#0ff");}
- for(let e of enemies){drawShadowCircle(e.x,e.y,25,"red");}
-
- // HP bar
- ctx.fillStyle="#333";ctx.fillRect(20,20,150,10);
- ctx.fillStyle="#0f0";ctx.fillRect(20,20,150*(player.hp/player.maxhp),10);
- ctx.fillStyle="#fff";ctx.fillText(`Lvl ${level} | Coins:${coins} | Kills:${kills}`,20,50);
-
- if(enemies.length===0){nextLevel();}
- requestAnimationFrame(loop);
-}
-function nextLevel(){
- level++;localStorage.setItem("level",level);
- player.hp=Math.min(player.maxhp,player.hp+20);
- spawnWave();
-}
-function gameOver(){
- playing=false;alert(`Game Over! Level:${level}  Coins:${coins}`);
- localStorage.setItem("coins",coins);
- localStorage.setItem("kills",kills);
- location.reload();
-}
-function drawShadowCircle(x,y,r,color){
- ctx.beginPath();
- let g=ctx.createRadialGradient(x,y,0,x,y,r);
- g.addColorStop(0,color);g.addColorStop(1,"#000");
- ctx.fillStyle=g;ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
-}
-function drawGlow(x,y,r,color){
- ctx.beginPath();ctx.fillStyle=color;ctx.shadowBlur=20;ctx.shadowColor=color;
- ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
-}
-</script>
 <script>
 const c=document.getElementById("game"),ctx=c.getContext("2d");
 let W=innerWidth,H=innerHeight;c.width=W;c.height=H;
@@ -417,7 +47,6 @@ const baseChars={
 };
 let chars={...baseChars};if(!specterUnlocked)delete chars.Specter;
 
-/* Titles */
 function getTitle(k){
  if(k<10)return"Recruit";
  if(k<30)return"Soldier";
@@ -427,21 +56,18 @@ function getTitle(k){
  return"Legend";
 }
 
-/* Player setup */
 function makePlayer(){
  const ch=baseChars[currentChar];
  return {x:W/2,y:H/2,s:30,spd:ch.spd,hp:ch.hp,maxhp:ch.hp,color:ch.color,bullets:[],alive:true};
 }
 let player=makePlayer(),enemies=[],angle=0,mx=W/2,my=H/2;
 
-/* Controls */
 window.addEventListener("keydown",e=>{keys[e.key]=true;if(e.key==="Escape")toggleShop();});
 window.addEventListener("keyup",e=>keys[e.key]=false);
 window.addEventListener("resize",()=>{W=innerWidth;H=innerHeight;c.width=W;c.height=H;});
 c.addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;angle=Math.atan2(my-player.y,mx-player.x);});
 c.addEventListener("click",()=>player.bullets.push({x:player.x,y:player.y,dx:Math.cos(angle)*10,dy:Math.sin(angle)*10}));
 
-/* Start */
 function startGame(){
  name=document.getElementById("nameInput").value||"Player";
  localStorage.setItem("name",name);
@@ -449,13 +75,11 @@ function startGame(){
  playing=true;spawnWave();loop();
 }
 
-/* Enemy waves */
 function spawnWave(){
  enemies=[];let n=Math.min(2+level,10);
  for(let i=0;i<n;i++)enemies.push({x:Math.random()*W,y:Math.random()*H,spd:1.2+level*0.1,hp:1});
 }
 
-/* Shop UI */
 function toggleShop(){
  shopOpen=!shopOpen;
  if(shopOpen)renderShop();else document.getElementById("shop")?.remove();
@@ -484,7 +108,6 @@ function renderShop(){
  });
 }
 
-/* Joystick */
 const joy=document.getElementById("joystick"),stick=document.getElementById("stick");
 let dragging=false,joyPos={x:0,y:0};
 joy.addEventListener("touchstart",()=>dragging=true);
@@ -498,7 +121,6 @@ joy.addEventListener("touchmove",e=>{
 });
 joy.addEventListener("touchend",()=>{dragging=false;joyPos={x:0,y:0};stick.style.transform="translate(-50%,-50%)";});
 
-/* Drawing */
 function drawShadowCircle(x,y,r,color){
  ctx.beginPath();
  let g=ctx.createRadialGradient(x,y,0,x,y,r);
@@ -506,11 +128,10 @@ function drawShadowCircle(x,y,r,color){
  ctx.fillStyle=g;ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
 }
 function drawGlow(x,y,r,color){
- ctx.beginPath();ctx.fillStyle=color;ctx.shadowBlur=20;ctx.shadowColor=color;
- ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+ ctx.beginPath();
+;
 }
 
-/* Loop */
 function loop(){
  if(!playing)return;
  ctx.clearRect(0,0,W,H);
@@ -530,7 +151,8 @@ function loop(){
        e.hp=0;b.x=-999;coins+=20;kills++;
        if(!specterUnlocked&&kills>=10){
          specterUnlocked=true;localStorage.setItem("specter","1");
-         alert("⚡ Specter Unlocked! Available in shop.");chars={...baseChars};
+         alert("⚡ Specter Unlocked! Available in shop.");
+         chars={...baseChars};
        }
      }
    }
@@ -550,12 +172,12 @@ function loop(){
  requestAnimationFrame(loop);
 }
 
-/* Next level & save */
 function nextLevel(){
  level++;localStorage.setItem("level",level);
  player.hp=Math.min(player.maxhp,player.hp+20);
  spawnWave();
 }
+
 function gameOver(){
  playing=false;
  leaderboard.push({name,level,kills});
@@ -567,6 +189,7 @@ function gameOver(){
  alert(`💀 Game Over — ${getTitle(kills)}\nLevel:${level}\nKills:${kills}`);
  showLeaderboard();
 }
+
 function showLeaderboard(){
  const div=document.createElement("div");
  div.id="lb";
@@ -578,4 +201,7 @@ function showLeaderboard(){
  div.querySelector("#restart").onclick=()=>location.reload();
 }
 </script>
+</body>
+</html>
+
 
